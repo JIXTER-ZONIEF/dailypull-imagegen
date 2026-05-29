@@ -91,6 +91,32 @@ class OneMinAiClientTest {
 
   @Test
   @SuppressWarnings("unchecked")
+  void downloadImage_success_returnsBytes() throws IOException, InterruptedException {
+    byte[] expected = {(byte) 0x89, 0x50, 0x4E, 0x47};
+    HttpResponse<byte[]> byteResponse = mock(HttpResponse.class);
+    when(byteResponse.statusCode()).thenReturn(200);
+    when(byteResponse.body()).thenReturn(expected);
+    when(httpClient.send(any(), any(HttpResponse.BodyHandler.class))).thenReturn(byteResponse);
+
+    byte[] result = client.downloadImage("https://cdn.example/image.png");
+
+    assertThat(result).isEqualTo(expected);
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void downloadImage_error_throwsException() throws IOException, InterruptedException {
+    HttpResponse<byte[]> byteResponse = mock(HttpResponse.class);
+    when(byteResponse.statusCode()).thenReturn(404);
+    when(httpClient.send(any(), any(HttpResponse.BodyHandler.class))).thenReturn(byteResponse);
+
+    assertThatThrownBy(() -> client.downloadImage("https://cdn.example/missing.png"))
+        .isInstanceOf(IOException.class)
+        .hasMessageContaining("Erreur téléchargement image (HTTP 404)");
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
   void generateImage_fluxModel_usesAspectRatio() throws IOException, InterruptedException {
     String responseJson =
         """
