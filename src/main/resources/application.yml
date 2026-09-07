@@ -4,6 +4,9 @@ spring:
 
 server:
   port: 8090
+  # Outil local uniquement : bind loopback pour ne jamais exposer /api/images/**
+  # (endpoints sans auth) sur un réseau partagé (ops#657).
+  address: 127.0.0.1
 
 onemin:
   api:

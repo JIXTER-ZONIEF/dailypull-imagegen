@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.0.6</version>
+        <version>4.1.0</version>
         <relativePath/>
     </parent>
 
@@ -19,6 +19,21 @@
 
     <properties>
         <java.version>25</java.version>
+
+        <!--
+          ops#1980 — surcharge AU-DESSUS de ce que le BOM Spring Boot 4.1.0 pinne.
+          Ce n'est pas une préférence : sans elle la mesure `cve-deps-parc.py` reste ROUGE au
+          seuil HIGH sur ce dépôt. La version pinnée par le BOM est nommée en face, pour que la
+          surcharge devienne SUPPRIMABLE dès que Boot la rattrape — une surcharge dont on ne
+          sait plus ce qu'elle dépasse ne se retire jamais.
+
+          tomcat 11.0.22 (BOM Spring Boot 4.1.0) -> 11.0.25 : `tomcat-embed-core` porte encore
+            en 11.0.22 les avis fermés par 11.0.25. 11.0.25 est la version corrigée nommée par
+            les avis OSV, et elle EST publiée sur Maven Central : l'index solrsearch de
+            search.maven.org s'arrêtait à 11.0.22 le 2026-09-07, la disponibilité se mesure donc
+            sur `maven-metadata.xml`, jamais sur l'index de recherche.
+        -->
+        <tomcat.version>11.0.25</tomcat.version>
     </properties>
 
     <dependencies>
