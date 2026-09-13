@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+import fr.jixter.dailypull.imagegen.client.LocalMediaClient;
 import fr.jixter.dailypull.imagegen.client.OneMinAiClient;
 import fr.jixter.dailypull.imagegen.config.ImageGenConfig;
 import fr.jixter.dailypull.imagegen.domain.ImageGenerationRequest;
@@ -25,6 +26,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class ImageGenerationServiceTest {
 
   @Mock private OneMinAiClient client;
+  @Mock private LocalMediaClient localClient;
 
   @TempDir Path outputDir;
 
@@ -32,7 +34,8 @@ class ImageGenerationServiceTest {
 
   @BeforeEach
   void setUp() {
-    service = new ImageGenerationService(client, new ImageGenConfig(outputDir.toString()));
+    service =
+        new ImageGenerationService(client, new ImageGenConfig(outputDir.toString()), localClient);
   }
 
   private ImageGenerationRequest request() {
@@ -61,6 +64,7 @@ class ImageGenerationServiceTest {
     // les autres champs sont préservés
     assertThat(result.uuid()).isEqualTo("uuid-1");
     assertThat(result.imageUrl()).isEqualTo("https://cdn.example/img.png");
+    assertThat(result.status()).isEqualTo("REVIEW_REQUIRED");
   }
 
   @Test
@@ -97,5 +101,28 @@ class ImageGenerationServiceTest {
     assertThat(results).hasSize(2);
     verify(client, times(2)).generateImage(any());
     verify(client, never()).downloadImage(any());
+  }
+
+  @Test
+  void localSuccessDoesNotSpendLegacyCredits() throws Exception {
+    var local =
+        new ImageGenerationResult(
+            "local",
+            "flux1-schnell-local",
+            "REVIEW_REQUIRED",
+            null,
+            outputDir.resolve("candidate.png").toString(),
+            Instant.EPOCH);
+    when(localClient.generate(any())).thenReturn(java.util.Optional.of(local));
+    assertThat(service.generate(request())).isEqualTo(local);
+    verifyNoInteractions(client);
+  }
+
+  @Test
+  void rejectedDoctrineMustNotFallBackToPaidProvider() throws Exception {
+    when(localClient.generate(any())).thenThrow(new IllegalArgumentException("refus"));
+    org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.generate(request()))
+        .isInstanceOf(IllegalArgumentException.class);
+    verifyNoInteractions(client);
   }
 }
