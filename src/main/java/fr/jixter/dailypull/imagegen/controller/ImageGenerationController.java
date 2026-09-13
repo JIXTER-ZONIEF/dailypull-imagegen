@@ -43,4 +43,10 @@ public class ImageGenerationController {
             .toList();
     return ResponseEntity.ok(models);
   }
+
+  @ExceptionHandler(IllegalArgumentException.class)
+  public ResponseEntity<Map<String, String>> rejectedBrief(IllegalArgumentException exception) {
+    return ResponseEntity.badRequest()
+        .body(Map.of("status", "REJECTED", "reason", exception.getMessage()));
+  }
 }

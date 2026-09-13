@@ -1,5 +1,6 @@
 package fr.jixter.dailypull.imagegen.service;
 
+import fr.jixter.dailypull.imagegen.client.LocalMediaClient;
 import fr.jixter.dailypull.imagegen.client.OneMinAiClient;
 import fr.jixter.dailypull.imagegen.config.ImageGenConfig;
 import fr.jixter.dailypull.imagegen.domain.ImageGenerationRequest;
@@ -20,14 +21,19 @@ public class ImageGenerationService {
 
   private final OneMinAiClient client;
   private final ImageGenConfig config;
+  private final LocalMediaClient localClient;
 
-  public ImageGenerationService(OneMinAiClient client, ImageGenConfig config) {
+  public ImageGenerationService(
+      OneMinAiClient client, ImageGenConfig config, LocalMediaClient localClient) {
     this.client = client;
     this.config = config;
+    this.localClient = localClient;
   }
 
   public ImageGenerationResult generate(ImageGenerationRequest request)
       throws IOException, InterruptedException {
+    var local = localClient.generate(request);
+    if (local.isPresent()) return local.get();
     ImageGenerationResult result = client.generateImage(request);
 
     if (result.imageUrl() != null && !result.imageUrl().isBlank()) {
@@ -36,13 +42,20 @@ public class ImageGenerationService {
           new ImageGenerationResult(
               result.uuid(),
               result.model(),
-              result.status(),
+              "REVIEW_REQUIRED",
               result.imageUrl(),
               localPath,
               result.createdAt());
     }
 
-    return result;
+    // Le fournisseur legacy ne dispense pas de la revue des droits, faits et rendu.
+    return new ImageGenerationResult(
+        result.uuid(),
+        result.model(),
+        "REVIEW_REQUIRED",
+        result.imageUrl(),
+        result.localPath(),
+        result.createdAt());
   }
 
   public List<ImageGenerationResult> generateBatch(List<ImageGenerationRequest> requests)

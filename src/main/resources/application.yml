@@ -15,3 +15,5 @@ onemin:
 
 imagegen:
   output-dir: ${IMAGEGEN_OUTPUT_DIR:./generated-images}
+  local-enabled: ${IMAGEGEN_LOCAL_ENABLED:true}
+  local-script: ${IMAGEGEN_LOCAL_SCRIPT:}

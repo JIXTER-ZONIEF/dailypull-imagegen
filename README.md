@@ -1,6 +1,24 @@
 # DailyPull Image Generator
 
-Outil de génération d'images pour les cartes [DailyPull](https://github.com/YoannSACHOT/dailypull) via l'API [1min.ai](https://1min.ai).
+Outil de génération d'illustrations pour les cartes DailyPull. Le fournisseur local
+FLUX.1 Schnell est essayé via `~/scripts/local-media.py` ; l'API 1min.ai existante
+reste le secours si le PC Windows est indisponible. La génération n'ajoute ni faits
+ni cartes à l'application et ne publie rien.
+
+### Revue obligatoire, pour les deux fournisseurs
+
+Les réponses portent `REVIEW_REQUIRED`. Vérifier l'illustration, les faits de la
+carte sur leurs sources, les droits et la doctrine DailyPull avant toute utilisation.
+Le candidat local contient `candidate.json`, `source.png` et `image.png` dans le
+répertoire parent de `localPath`. Suivre `~/.claude/commands/_local-media.md` pour
+le reçu de revue et l'export. Une image legacy doit être importée et revue selon
+le même contrat ; le statut du fournisseur n'est jamais une autorisation de publier.
+
+Le script travaille par SSH sur `windows-pc`, avec budgets de temps bornés. Code 20
+ou absence du fournisseur local : secours 1min.ai, mêmes paramètres historiques.
+Code 30 : brief refusé, réponse HTTP 400, aucun appel payant de contournement.
+L'ancien moteur se force avec `IMAGEGEN_LOCAL_ENABLED=false` (la revue reste
+obligatoire). `IMAGEGEN_LOCAL_SCRIPT` permet de préciser le chemin du helper.
 
 ## Modèles supportés
 
