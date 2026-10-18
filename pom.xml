@@ -34,6 +34,13 @@
             sur `maven-metadata.xml`, jamais sur l'index de recherche.
         -->
         <tomcat.version>11.0.25</tomcat.version>
+        <!-- ops#2872 : Spring Boot gère tools.jackson 3.1.4/3.1.5 et jackson 2.x 2.21.4,
+             vulnérables à CVE-2026-89407 (GHSA-p6pp-m3f8-5c89, ReDoS NumberInput) et
+             CVE-2026-89425 (GHSA-7hhh-6rmp-j9qf, _reportInvalidToken sans limite), CVSS 7,5,
+             corrigées en 3.1.7 et 2.21.7 (OSV.dev relu le 2026-10-18). Surcharge de patch,
+             à retirer quand le parent Spring Boot embarquera ces versions ou plus. -->
+        <jackson-bom.version>3.1.8</jackson-bom.version>
+        <jackson-2-bom.version>2.21.8</jackson-2-bom.version>
     </properties>
 
     <dependencies>
