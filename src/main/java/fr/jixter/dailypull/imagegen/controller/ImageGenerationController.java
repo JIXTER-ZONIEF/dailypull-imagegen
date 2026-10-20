@@ -5,6 +5,7 @@ import fr.jixter.dailypull.imagegen.domain.ImageGenerationRequest;
 import fr.jixter.dailypull.imagegen.domain.ImageGenerationResult;
 import fr.jixter.dailypull.imagegen.domain.ImageModel;
 import fr.jixter.dailypull.imagegen.service.ImageGenerationService;
+import fr.jixter.dailypull.imagegen.service.LocalMediaUnavailableException;
 import jakarta.validation.Valid;
 import java.io.IOException;
 import java.util.Arrays;
@@ -48,5 +49,12 @@ public class ImageGenerationController {
   public ResponseEntity<Map<String, String>> rejectedBrief(IllegalArgumentException exception) {
     return ResponseEntity.badRequest()
         .body(Map.of("status", "REJECTED", "reason", exception.getMessage()));
+  }
+
+  @ExceptionHandler(LocalMediaUnavailableException.class)
+  public ResponseEntity<Map<String, String>> localUnavailable(
+      LocalMediaUnavailableException exception) {
+    return ResponseEntity.status(503)
+        .body(Map.of("status", "UNAVAILABLE", "reason", exception.getMessage()));
   }
 }

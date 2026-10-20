@@ -8,12 +8,6 @@ server:
   # (endpoints sans auth) sur un réseau partagé (ops#657).
   address: 127.0.0.1
 
-onemin:
-  api:
-    base-url: https://api.1min.ai
-    key: ${ONEMIN_API_KEY}
-
 imagegen:
-  output-dir: ${IMAGEGEN_OUTPUT_DIR:./generated-images}
   local-enabled: ${IMAGEGEN_LOCAL_ENABLED:true}
   local-script: ${IMAGEGEN_LOCAL_SCRIPT:}

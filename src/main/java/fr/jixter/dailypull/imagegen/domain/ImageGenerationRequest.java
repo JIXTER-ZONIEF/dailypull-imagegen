@@ -13,7 +13,7 @@ public record ImageGenerationRequest(
     String outputFormat) {
 
   public ImageGenerationRequest {
-    if (model == null) model = ImageModel.DALL_E_3;
+    if (model == null) model = ImageModel.FLUX_SCHNELL_LOCAL;
     if (size == null) size = "1024x1024";
     if (quality == null) quality = "hd";
     if (style == null) style = "vivid";

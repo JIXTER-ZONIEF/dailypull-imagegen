@@ -38,7 +38,7 @@ public class LocalMediaClient {
   public Optional<ImageGenerationResult> generate(ImageGenerationRequest request)
       throws IOException, InterruptedException {
     if (!enabled || !Files.isRegularFile(script)) return Optional.empty();
-    // Pas de promesse implicite sur un format ignoré : legacy pour les tailles non locales.
+    // Taille hors du gabarit local : rien à produire, le service le signale.
     if (!List.of("768x768", "768x1024", "1024x1024", "1024x1280", "1536x1024")
         .contains(request.size())) {
       return Optional.empty();
@@ -90,7 +90,7 @@ public class LocalMediaClient {
               file.toAbsolutePath().toString(),
               Instant.now()));
     } catch (IOException | tools.jackson.core.JacksonException e) {
-      // Dépendance locale indisponible ; l'ancien client reste utilisable.
+      // Dépendance locale indisponible : le service répond 503.
       return Optional.empty();
     } finally {
       if (process != null && process.isAlive()) process.destroyForcibly();
