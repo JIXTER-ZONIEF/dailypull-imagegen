@@ -8,6 +8,7 @@ import fr.jixter.dailypull.imagegen.domain.ImageGenerationRequest;
 import fr.jixter.dailypull.imagegen.domain.ImageGenerationResult;
 import fr.jixter.dailypull.imagegen.domain.ImageModel;
 import fr.jixter.dailypull.imagegen.service.ImageGenerationService;
+import fr.jixter.dailypull.imagegen.service.LocalMediaUnavailableException;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
@@ -33,7 +34,7 @@ class ImageGenerationControllerTest {
   private ImageGenerationResult sampleResult() {
     return new ImageGenerationResult(
         "uuid-1",
-        "dall-e-3",
+        "flux1-schnell-local",
         "SUCCESS",
         "https://cdn.example/img.png",
         "/tmp/img.png",
@@ -43,7 +44,7 @@ class ImageGenerationControllerTest {
   @Test
   void generate_returnsServiceResult() throws IOException, InterruptedException {
     ImageGenerationRequest request =
-        new ImageGenerationRequest("prompt", ImageModel.DALL_E_3, null, null, null, null);
+        new ImageGenerationRequest("prompt", ImageModel.FLUX_SCHNELL_LOCAL, null, null, null, null);
     ImageGenerationResult expected = sampleResult();
     when(service.generate(request)).thenReturn(expected);
 
@@ -57,7 +58,7 @@ class ImageGenerationControllerTest {
   @Test
   void generateBatch_delegatesRequestsToService() throws IOException, InterruptedException {
     ImageGenerationRequest request =
-        new ImageGenerationRequest("prompt", ImageModel.DALL_E_3, null, null, null, null);
+        new ImageGenerationRequest("prompt", ImageModel.FLUX_SCHNELL_LOCAL, null, null, null, null);
     BatchGenerationRequest batch = new BatchGenerationRequest(List.of(request), false);
     List<ImageGenerationResult> expected = List.of(sampleResult());
     when(service.generateBatch(batch.requests())).thenReturn(expected);
@@ -79,6 +80,15 @@ class ImageGenerationControllerTest {
     assertThat(body).allSatisfy(m -> assertThat(m).containsKeys("id", "name"));
     // chaque apiId du enum est présent dans la réponse
     assertThat(body)
-        .anySatisfy(m -> assertThat(m.get("id")).isEqualTo(ImageModel.DALL_E_3.getApiId()));
+        .anySatisfy(
+            m -> assertThat(m.get("id")).isEqualTo(ImageModel.FLUX_SCHNELL_LOCAL.getApiId()));
+  }
+
+  @Test
+  void localUnavailable_answers503() {
+    var response = controller.localUnavailable(new LocalMediaUnavailableException());
+
+    assertThat(response.getStatusCode().value()).isEqualTo(503);
+    assertThat(response.getBody()).containsEntry("status", "UNAVAILABLE");
   }
 }

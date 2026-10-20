@@ -1,44 +1,37 @@
 # DailyPull Image Generator
 
-Outil de génération d'illustrations pour les cartes DailyPull. Le fournisseur local
-FLUX.1 Schnell est essayé via `~/scripts/local-media.py` ; l'API 1min.ai existante
-reste le secours si le PC Windows est indisponible. La génération n'ajoute ni faits
-ni cartes à l'application et ne publie rien.
+Outil de génération d'illustrations pour les cartes DailyPull. Le seul fournisseur est
+FLUX.1 Schnell local, appelé via `~/scripts/local-media.py` sur le PC Windows. Le secours
+payant 1min.ai a été retiré le 21/10/2026 (ops#2908) : si le fournisseur local ne répond
+pas, l'API renvoie `503 UNAVAILABLE` et rien n'est généré ailleurs. La génération n'ajoute
+ni faits ni cartes à l'application et ne publie rien.
 
-### Revue obligatoire, pour les deux fournisseurs
+### Revue obligatoire
 
 Les réponses portent `REVIEW_REQUIRED`. Vérifier l'illustration, les faits de la
 carte sur leurs sources, les droits et la doctrine DailyPull avant toute utilisation.
 Le candidat local contient `candidate.json`, `source.png` et `image.png` dans le
 répertoire parent de `localPath`. Suivre `~/.claude/commands/_local-media.md` pour
-le reçu de revue et l'export. Une image legacy doit être importée et revue selon
-le même contrat ; le statut du fournisseur n'est jamais une autorisation de publier.
+le reçu de revue et l'export. Le statut du fournisseur n'est jamais une autorisation
+de publier.
 
-Le script travaille par SSH sur `windows-pc`, avec budgets de temps bornés. Code 20
-ou absence du fournisseur local : secours 1min.ai, mêmes paramètres historiques.
-Code 30 : brief refusé, réponse HTTP 400, aucun appel payant de contournement.
-L'ancien moteur se force avec `IMAGEGEN_LOCAL_ENABLED=false` (la revue reste
-obligatoire). `IMAGEGEN_LOCAL_SCRIPT` permet de préciser le chemin du helper.
+Le script travaille par SSH sur `windows-pc`, avec budgets de temps bornés. Code 20,
+délai dépassé ou taille hors gabarit (`768x768`, `768x1024`, `1024x1024`, `1024x1280`,
+`1536x1024`) : réponse HTTP 503. Code 30 : brief refusé, réponse HTTP 400.
+`IMAGEGEN_LOCAL_ENABLED=false` désactive le fournisseur (toute génération répond 503).
+`IMAGEGEN_LOCAL_SCRIPT` permet de préciser le chemin du helper.
 
-## Modèles supportés
+## Modèle
 
-| Modèle | ID API |
-|--------|--------|
-| DALL-E 3 | `dall-e-3` |
-| DALL-E 2 | `dall-e-2` |
-| GPT Image 1 | `gpt-image-1` |
-| Flux Pro 1.1 | `black-forest-labs/flux-1.1-pro` |
-| Flux Dev | `black-forest-labs/flux-dev` |
-| Flux Schnell | `black-forest-labs/flux-schnell` |
-| Stable Image Core | `stable-image` |
-| Gemini 3 Pro Image | `gemini-3-pro-image-preview` |
-| Gemini 3.1 Flash Image | `gemini-3-1-flash-image-preview` |
+| Modèle | ID |
+|--------|----|
+| FLUX.1 Schnell (local, PC Windows) | `flux1-schnell-local` |
 
 ## Prérequis
 
 - Java 25+
 - Maven 3.9+
-- Une clé API [1min.ai](https://app.1min.ai/members)
+- Accès SSH `windows-pc` et `~/scripts/local-media.py`
 
 ## Installation
 
@@ -46,14 +39,6 @@ obligatoire). `IMAGEGEN_LOCAL_SCRIPT` permet de préciser le chemin du helper.
 git clone https://github.com/YoannSACHOT/dailypull-imagegen.git
 cd dailypull-imagegen
 cp src/main/resources/application-dev.yml.example src/main/resources/application-dev.yml
-```
-
-Renseigner la clé API dans `application-dev.yml` :
-
-```yaml
-onemin:
-  api:
-    key: VOTRE_CLE_API
 ```
 
 ## Lancement
@@ -73,10 +58,7 @@ curl -X POST http://localhost:8090/api/images/generate \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "A motivational card with golden sunrise, courage theme, elegant typography",
-    "model": "DALL_E_3",
-    "size": "1024x1024",
-    "quality": "hd",
-    "style": "vivid"
+    "size": "1024x1024"
   }'
 ```
 
@@ -87,8 +69,8 @@ curl -X POST http://localhost:8090/api/images/generate/batch \
   -H "Content-Type: application/json" \
   -d '{
     "requests": [
-      {"prompt": "Courage card — mountain peak at dawn", "model": "DALL_E_3"},
-      {"prompt": "Serenity card — calm ocean under moonlight", "model": "FLUX_PRO_1_1"}
+      {"prompt": "Courage card, mountain peak at dawn"},
+      {"prompt": "Serenity card, calm ocean under moonlight"}
     ]
   }'
 ```
@@ -103,14 +85,11 @@ curl http://localhost:8090/api/images/models
 
 | Paramètre | Défaut | Options |
 |-----------|--------|---------|
-| `prompt` | *(requis)* | — |
-| `model` | `DALL_E_3` | Voir tableau des modèles |
-| `size` | `1024x1024` | `1024x1024`, `1024x1792`, `1792x1024` |
-| `quality` | `hd` | `standard`, `hd` |
-| `style` | `vivid` | `vivid`, `natural` |
-| `outputFormat` | `png` | `png`, `jpeg`, `webp` |
+| `prompt` | *(requis)* | |
+| `model` | `FLUX_SCHNELL_LOCAL` | `FLUX_SCHNELL_LOCAL` |
+| `size` | `1024x1024` | `768x768`, `768x1024`, `1024x1024`, `1024x1280`, `1536x1024` |
 
-Les images générées sont sauvegardées automatiquement dans `./generated-images/`.
+Le candidat est écrit par `local-media.py` ; son chemin est renvoyé dans `localPath`.
 
 ## Stack technique
 

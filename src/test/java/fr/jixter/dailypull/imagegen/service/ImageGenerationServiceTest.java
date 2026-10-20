@@ -1,128 +1,78 @@
 package fr.jixter.dailypull.imagegen.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import fr.jixter.dailypull.imagegen.client.LocalMediaClient;
-import fr.jixter.dailypull.imagegen.client.OneMinAiClient;
-import fr.jixter.dailypull.imagegen.config.ImageGenConfig;
 import fr.jixter.dailypull.imagegen.domain.ImageGenerationRequest;
 import fr.jixter.dailypull.imagegen.domain.ImageGenerationResult;
-import fr.jixter.dailypull.imagegen.domain.ImageModel;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class ImageGenerationServiceTest {
 
-  @Mock private OneMinAiClient client;
   @Mock private LocalMediaClient localClient;
-
-  @TempDir Path outputDir;
 
   private ImageGenerationService service;
 
   @BeforeEach
   void setUp() {
-    service =
-        new ImageGenerationService(client, new ImageGenConfig(outputDir.toString()), localClient);
+    service = new ImageGenerationService(localClient);
   }
 
   private ImageGenerationRequest request() {
-    return new ImageGenerationRequest("a prompt", ImageModel.DALL_E_3, null, null, null, null);
+    return new ImageGenerationRequest("a prompt", null, null, null, null, null);
   }
 
-  private ImageGenerationResult result(String imageUrl) {
+  private ImageGenerationResult local() {
     return new ImageGenerationResult(
-        "uuid-1", "dall-e-3", "SUCCESS", imageUrl, null, Instant.EPOCH);
+        "local",
+        "flux1-schnell-local",
+        "REVIEW_REQUIRED",
+        null,
+        "/tmp/candidate.png",
+        Instant.EPOCH);
   }
 
   @Test
-  void generate_withImageUrl_downloadsAndPopulatesLocalPath()
-      throws IOException, InterruptedException {
-    ImageGenerationRequest request = request();
-    byte[] bytes = {1, 2, 3, 4};
-    when(client.generateImage(request)).thenReturn(result("https://cdn.example/img.png"));
-    when(client.downloadImage("https://cdn.example/img.png")).thenReturn(bytes);
+  void localCandidateIsReturnedForReview() throws Exception {
+    when(localClient.generate(any())).thenReturn(Optional.of(local()));
 
-    ImageGenerationResult result = service.generate(request);
-
-    Path expected = outputDir.resolve("dall-e-3_uuid-1.png");
-    assertThat(result.localPath()).isEqualTo(expected.toAbsolutePath().toString());
-    assertThat(Files.exists(expected)).isTrue();
-    assertThat(Files.readAllBytes(expected)).isEqualTo(bytes);
-    // les autres champs sont préservés
-    assertThat(result.uuid()).isEqualTo("uuid-1");
-    assertThat(result.imageUrl()).isEqualTo("https://cdn.example/img.png");
-    assertThat(result.status()).isEqualTo("REVIEW_REQUIRED");
+    assertThat(service.generate(request())).isEqualTo(local());
   }
 
   @Test
-  void generate_withoutImageUrl_returnsResultUnchangedAndSkipsDownload()
-      throws IOException, InterruptedException {
-    ImageGenerationRequest request = request();
-    when(client.generateImage(request)).thenReturn(result(null));
+  void localUnavailableNeverFallsBackToAnotherProvider() throws Exception {
+    when(localClient.generate(any())).thenReturn(Optional.empty());
 
-    ImageGenerationResult result = service.generate(request);
-
-    assertThat(result.localPath()).isNull();
-    verify(client, never()).downloadImage(any());
+    assertThatThrownBy(() -> service.generate(request()))
+        .isInstanceOf(LocalMediaUnavailableException.class);
   }
 
   @Test
-  void generate_withBlankImageUrl_skipsDownload() throws IOException, InterruptedException {
-    ImageGenerationRequest request = request();
-    when(client.generateImage(request)).thenReturn(result("   "));
+  void rejectedDoctrineIsPropagated() throws Exception {
+    when(localClient.generate(any())).thenThrow(new IllegalArgumentException("refus"));
 
-    ImageGenerationResult result = service.generate(request);
-
-    assertThat(result.localPath()).isNull();
-    verify(client, never()).downloadImage(any());
+    assertThatThrownBy(() -> service.generate(request()))
+        .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
-  void generateBatch_generatesEachRequest() throws IOException, InterruptedException {
-    ImageGenerationRequest r1 = request();
-    ImageGenerationRequest r2 = request();
-    when(client.generateImage(any())).thenReturn(result(null));
+  void generateBatch_generatesEachRequest() throws Exception {
+    when(localClient.generate(any())).thenReturn(Optional.of(local()));
 
-    List<ImageGenerationResult> results = service.generateBatch(List.of(r1, r2));
+    List<ImageGenerationResult> results = service.generateBatch(List.of(request(), request()));
 
     assertThat(results).hasSize(2);
-    verify(client, times(2)).generateImage(any());
-    verify(client, never()).downloadImage(any());
-  }
-
-  @Test
-  void localSuccessDoesNotSpendLegacyCredits() throws Exception {
-    var local =
-        new ImageGenerationResult(
-            "local",
-            "flux1-schnell-local",
-            "REVIEW_REQUIRED",
-            null,
-            outputDir.resolve("candidate.png").toString(),
-            Instant.EPOCH);
-    when(localClient.generate(any())).thenReturn(java.util.Optional.of(local));
-    assertThat(service.generate(request())).isEqualTo(local);
-    verifyNoInteractions(client);
-  }
-
-  @Test
-  void rejectedDoctrineMustNotFallBackToPaidProvider() throws Exception {
-    when(localClient.generate(any())).thenThrow(new IllegalArgumentException("refus"));
-    org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.generate(request()))
-        .isInstanceOf(IllegalArgumentException.class);
-    verifyNoInteractions(client);
+    verify(localClient, times(2)).generate(any());
   }
 }
