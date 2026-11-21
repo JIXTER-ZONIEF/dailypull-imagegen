@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - master
+  push:
+    branches:
+      - develop
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    # Dépôt PUBLIC : le groupe de runners self-hosted de l'organisation refuse les dépôts publics
+    # (et c'est voulu, un runner self-hosted n'exécute pas le code d'un dépôt public). Le job
+    # tourne donc sur un runner hébergé par GitHub, sans secret.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      # Garde de format bloquante (ops#3644) : sans `continue-on-error`, une violation rend le job
+      # rouge.
+      - name: Spotless check
+        run: mvn -B -ntp spotless:check -q
+
+      # Compilation + tests : ce dépôt reçoit des montées de dépendances (Renovate, correctifs de
+      # sécurité du parc) que rien ne vérifiait.
+      - name: Build + tests
+        run: mvn -B -ntp clean verify
