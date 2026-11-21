@@ -10,58 +10,32 @@ on:
       - develop
       - master
 
+permissions:
+  contents: read
+
 jobs:
   build:
-    # Garde anti-fork : le runner self-hosted exécute le code de la PR. Le dépôt est privé, mais
-    # l'invariant ne doit pas dépendre de sa seule visibilité.
-    if: >-
-      github.event_name != 'pull_request' ||
-      github.event.pull_request.head.repo.full_name == github.repository
-    # Maven/JVM pur : runner Linux du PC, comme les autres backends (ops#2229).
-    runs-on: [self-hosted, linux-build]
+    # Dépôt PUBLIC : le groupe de runners self-hosted de l'organisation refuse les dépôts publics
+    # (et c'est voulu, un runner self-hosted n'exécute pas le code d'un dépôt public). Le job
+    # tourne donc sur un runner hébergé par GitHub, sans secret.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
 
-      - name: Setup Java + Maven
-        run: |
-          set -e
-          [ -x "$HOME/jdk-25/bin/javac" ] || {
-            echo "::error::$HOME/jdk-25 n'est pas un JDK (javac absent) sur $RUNNER_NAME."
-            exit 1
-          }
-          [ -x "$HOME/maven/bin/mvn" ] || {
-            echo "::error::Maven absent sur $RUNNER_NAME : $HOME/maven/bin/mvn introuvable."
-            exit 1
-          }
-          echo "JAVA_HOME=$HOME/jdk-25" >> $GITHUB_ENV
-          echo "$HOME/jdk-25/bin" >> $GITHUB_PATH
-          echo "$HOME/maven/bin" >> $GITHUB_PATH
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
 
       # Garde de format bloquante (ops#3644) : sans `continue-on-error`, une violation rend le job
-      # rouge. Dépôt Maven local PAR runner (ops#1449, ops#1455).
+      # rouge.
       - name: Spotless check
-        shell: bash
-        run: |
-          set -uo pipefail
-          REPO="$HOME/m2-ci/${RUNNER_NAME:-default}"
-          mkdir -p "$REPO"
-          mvn -B -ntp -Dmaven.repo.local="$REPO" spotless:check -q
+        run: mvn -B -ntp spotless:check -q
 
       # Compilation + tests : ce dépôt reçoit des montées de dépendances (Renovate, correctifs de
-      # sécurité du parc) que rien ne vérifiait. Retry unique borné à la signature transitoire du
-      # repackage (ops#1449).
+      # sécurité du parc) que rien ne vérifiait.
       - name: Build + tests
-        shell: bash
-        run: |
-          set -uo pipefail
-          REPO="$HOME/m2-ci/${RUNNER_NAME:-default}"
-          mkdir -p "$REPO"
-          log=$(mktemp)
-          mvn -B -ntp -Dmaven.repo.local="$REPO" clean verify 2>&1 | tee "$log"
-          rc=${PIPESTATUS[0]}
-          if [ "$rc" -ne 0 ] && grep -q "zip END header not found" "$log"; then
-            echo "::warning::repackage transitoire (zip END header not found), nouvelle tentative unique (ops#1449)"
-            mvn -B -ntp -Dmaven.repo.local="$REPO" clean verify 2>&1 | tee "$log"
-            rc=${PIPESTATUS[0]}
-          fi
-          exit "$rc"
+        run: mvn -B -ntp clean verify
