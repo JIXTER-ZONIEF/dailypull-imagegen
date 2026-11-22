@@ -33,7 +33,10 @@
             search.maven.org s'arrêtait à 11.0.22 le 2026-09-07, la disponibilité se mesure donc
             sur `maven-metadata.xml`, jamais sur l'index de recherche.
         -->
-        <tomcat.version>11.0.25</tomcat.version>
+        <!-- ops#3672 : 11.0.25 rétrogradait sous la BOM Boot 4.1.2 (11.0.27). 11.0.29 ferme les
+             failles Important corrigées en 11.0.26, 11.0.27 et 11.0.29 (page sécurité Tomcat 11).
+             À RETIRER dès que le parent Spring Boot gère une version >= 11.0.29. -->
+        <tomcat.version>11.0.29</tomcat.version>
         <!-- ops#2872 : Spring Boot gère tools.jackson 3.1.4/3.1.5 et jackson 2.x 2.21.4,
              vulnérables à CVE-2026-89407 (GHSA-p6pp-m3f8-5c89, ReDoS NumberInput) et
              CVE-2026-89425 (GHSA-7hhh-6rmp-j9qf, _reportInvalidToken sans limite), CVSS 7,5,
