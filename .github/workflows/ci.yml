@@ -27,7 +27,7 @@ jobs:
         uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: "25"
+          java-version-file: .tool-versions
           cache: maven
 
       # Garde de format bloquante (ops#3644) : sans `continue-on-error`, une violation rend le job
